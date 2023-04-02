@@ -1,5 +1,5 @@
 import pytest
-from results.graph import dfs, bfs
+from tasks.graph import dfs, bfs
 
 input_data: list[(dict, int)] = [
     ({
