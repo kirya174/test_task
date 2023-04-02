@@ -1,5 +1,7 @@
 from itertools import chain
 
+import json
+
 
 class Component:
 
@@ -85,3 +87,31 @@ class EmptyAlgorithm:
 
     def __call__(self, source_object):
         return []
+
+
+component = Component(FirstAlgorithm(), EmptyAlgorithm())
+print(json.dumps(
+    component.class_capacities(Lemon),
+    indent=4
+))
+
+output = {
+    'Potential': [
+        '/Lemon',
+        '/Lemon/Orange',
+        '/Lemon/Apple'
+        '/Lemon/Orange/Apple'
+    ],
+    'Algorithm': {
+        'FirstAlgorithm': {
+            '/Lemon': [
+                '/Lemon/Orange',
+                '/Lemon/Apple'
+            ],
+            '/Lemon/Orange': [
+                '/Lemon/Orange/Apple'
+            ]
+        },
+        'EmptyAlgorithm': {}
+    }
+}
