@@ -18,23 +18,32 @@ class Component:
             ))
         return result
 
-    def class_capacities(self, object_class):
+    def class_capacities(self, object_class) -> dict[str: list]:
+        """
+        Function returns list of potential paths and list of algorithms
+        """
         potential_paths = set()
-        algorithm_dict = {}
+        algorithms = {}
 
         for algorithm in self.algorithm_list:
             paths = self.get_paths(algorithm.SPECIFICATION, object_class)
             str_paths = ['/' + '/'.join([elem.__name__ for elem in path]) for path in paths]
             potential_paths.update(str_paths)
 
-        return {"Potential": potential_paths, "Algorithm": algorithm_dict}
+        return {"Potential": list(potential_paths),
+                "Algorithm": algorithms}
 
-    def get_paths(self, graph, start, path=None):
+    def get_paths(self, graph: dict, start, path=None) -> list[list]:
+        # full path to current node
         path = [start] if path is None else path + [start]
+        # adding current node path and it's children (if they exist) to the list of potential paths
         paths = [path] + [path + [node] for node in graph.get(start, [])]
+        # iterate over children nodes
         for node in graph.get(start, []):
+            # check if child not is already mentioned in path
             if node not in path:
                 new_paths = self.get_paths(graph, node, path)
+                # adding paths got from children to potential paths list
                 for new_path in new_paths:
                     if new_path not in paths:
                         paths.append(new_path)
