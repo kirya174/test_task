@@ -19,20 +19,26 @@ class Component:
         return result
 
     def class_capacities(self, object_class):
-        potential_paths = [f"/{object_class.__name__}"]
+        potential_paths = set()
         algorithm_dict = {}
 
         for algorithm in self.algorithm_list:
-            queue = [*algorithm.SPECIFICATION.get(object_class, [])]
-            while queue:
-                v = queue.pop(0)
-                potential_paths.append(f"{potential_paths[0]}/{v.__name__}")
-                queue.extend(algorithm.SPECIFICATION.get(v, []))
-                # todo only 1st level checked. Need to add check in depth
-                # if algorithm.SPECIFICATION.get(v) is not None:
-                #     path_n = len(potential_paths) - 1
+            paths = self.get_paths(algorithm.SPECIFICATION, object_class)
+            str_paths = ['/' + '/'.join([elem.__name__ for elem in path]) for path in paths]
+            potential_paths.update(str_paths)
 
         return {"Potential": potential_paths, "Algorithm": algorithm_dict}
+
+    def get_paths(self, graph, start, path=None):
+        path = [start] if path is None else path + [start]
+        paths = [path] + [path + [node] for node in graph.get(start, [])]
+        for node in graph.get(start, []):
+            if node not in path:
+                new_paths = self.get_paths(graph, node, path)
+                for new_path in new_paths:
+                    if new_path not in paths:
+                        paths.append(new_path)
+        return paths
 
 
 class Apple:
