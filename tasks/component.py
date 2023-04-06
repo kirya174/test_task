@@ -34,7 +34,7 @@ class Component:
         return {"Potential": list(potential_paths),
                 "Algorithm": algorithms}
 
-    def parse_specification(self, object_class) -> list:
+    def parse_specification(self, object_class) -> set:
         def get_paths(graph: dict, start, path=None) -> list[list]:
             # full path to current node
             path = [start] if path is None else path + [start]
@@ -51,13 +51,12 @@ class Component:
                             paths.append(new_path)
             return paths
 
-        potential_paths = []
+        potential_paths = set()
         for algorithm in self.algorithm_list:
             paths = get_paths(algorithm.SPECIFICATION, object_class)
             str_paths = ['/' + '/'.join([elem.__name__ for elem in path]) for path in paths]
             for path in str_paths:
-                if path not in potential_paths:
-                    potential_paths.append(path)
+                potential_paths.add(path)
         return potential_paths
 
     def parse_algorithm(self, source_object, algorithm):
