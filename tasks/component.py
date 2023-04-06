@@ -1,6 +1,7 @@
 from itertools import chain
 
 import json
+import inspect
 
 
 class Component:
@@ -24,32 +25,65 @@ class Component:
         """
         Function returns list of potential paths and list of algorithms
         """
-        potential_paths = set()
-        algorithms = {}
+        potential_paths = self.parse_specification(object_class)
 
+        algorithms = {}
         for algorithm in self.algorithm_list:
-            paths = self.get_paths(algorithm.SPECIFICATION, object_class)
-            str_paths = ['/' + '/'.join([elem.__name__ for elem in path]) for path in paths]
-            potential_paths.update(str_paths)
+            algorithms[self.get_class_name(algorithm)] = self.parse_algorithm(object_class, algorithm)
 
         return {"Potential": list(potential_paths),
                 "Algorithm": algorithms}
 
-    def get_paths(self, graph: dict, start, path=None) -> list[list]:
-        # full path to current node
-        path = [start] if path is None else path + [start]
-        # adding current node path and it's children (if they exist) to the list of potential paths
-        paths = [path] + [path + [node] for node in graph.get(start, [])]
-        # iterate over children nodes
-        for node in graph.get(start, []):
-            # check if child not is already mentioned in path
-            if node not in path:
-                new_paths = self.get_paths(graph, node, path)
-                # adding paths got from children to potential paths list
-                for new_path in new_paths:
-                    if new_path not in paths:
-                        paths.append(new_path)
-        return paths
+    def parse_specification(self, object_class) -> list:
+        def get_paths(graph: dict, start, path=None) -> list[list]:
+            # full path to current node
+            path = [start] if path is None else path + [start]
+            # adding current node path and it's children (if they exist) to the list of potential paths
+            paths = [path] + [path + [node] for node in graph.get(start, [])]
+            # iterate over children nodes
+            for node in graph.get(start, []):
+                # check if child not is already mentioned in path
+                if node not in path:
+                    new_paths = get_paths(graph, node, path)
+                    # adding paths got from children to potential paths list
+                    for new_path in new_paths:
+                        if new_path not in paths:
+                            paths.append(new_path)
+            return paths
+
+        potential_paths = []
+        for algorithm in self.algorithm_list:
+            paths = get_paths(algorithm.SPECIFICATION, object_class)
+            str_paths = ['/' + '/'.join([elem.__name__ for elem in path]) for path in paths]
+            for path in str_paths:
+                if path not in potential_paths:
+                    potential_paths.append(path)
+        return potential_paths
+
+    def parse_algorithm(self, source_object, algorithm):
+        results = []
+        queue = [[source_object()]]
+        while queue:
+            results.extend(queue)
+            new_queue = []
+            for item in queue:
+                new_items = ([*item, new_item] for new_item in algorithm(item[-1]))
+                new_queue.extend(new_items)
+            queue = new_queue
+
+        result_dict = {}
+        for elem in [tuple([self.get_class_name(elem) for elem in result]) for result in results]:
+            if len(elem) > 1:
+                key = '/' + '/'.join(elem[:-1])
+                value = f'{key}/{elem[-1]}'
+                if value not in result_dict.get(key, []):
+                    result_dict.setdefault(key, []).append(value)
+
+        return result_dict
+
+    @staticmethod
+    def get_class_name(obj) -> str:
+        return obj.__class__.__name__
 
 
 class Apple:
@@ -89,29 +123,30 @@ class EmptyAlgorithm:
         return []
 
 
-component = Component(FirstAlgorithm(), EmptyAlgorithm())
-print(json.dumps(
-    component.class_capacities(Lemon),
-    indent=4
-))
+if __name__ == '__main__':
+    component = Component(FirstAlgorithm(), EmptyAlgorithm())
+    print(json.dumps(
+        component.class_capacities(Lemon),
+        indent=4
+    ))
 
-output = {
-    'Potential': [
-        '/Lemon',
-        '/Lemon/Orange',
-        '/Lemon/Apple'
-        '/Lemon/Orange/Apple'
-    ],
-    'Algorithm': {
-        'FirstAlgorithm': {
-            '/Lemon': [
-                '/Lemon/Orange',
-                '/Lemon/Apple'
-            ],
-            '/Lemon/Orange': [
-                '/Lemon/Orange/Apple'
-            ]
-        },
-        'EmptyAlgorithm': {}
+    output = {
+        'Potential': [
+            '/Lemon',
+            '/Lemon/Orange',
+            '/Lemon/Apple'
+            '/Lemon/Orange/Apple'
+        ],
+        'Algorithm': {
+            'FirstAlgorithm': {
+                '/Lemon': [
+                    '/Lemon/Orange',
+                    '/Lemon/Apple'
+                ],
+                '/Lemon/Orange': [
+                    '/Lemon/Orange/Apple'
+                ]
+            },
+            'EmptyAlgorithm': {}
+        }
     }
-}
