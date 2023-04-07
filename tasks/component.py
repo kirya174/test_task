@@ -1,7 +1,6 @@
 from itertools import chain
 
 import json
-import inspect
 
 
 class Component:
@@ -25,68 +24,54 @@ class Component:
         """
         Function returns list of potential paths and list of algorithms
         """
-        potential_paths = self.parse_specification(object_class)
+        potential_paths, algorithms = set(), dict()
 
-        algorithms = {}
         for algorithm in self.algorithm_list:
-            algorithms[self.get_class_name(algorithm)] = self.parse_algorithm(object_class, algorithm)
+            paths = self._get_paths(algorithm.SPECIFICATION, object_class)
+            potential_paths.update(self._parse_specification(paths))
+            algorithms[self._get_name(algorithm.__class__)] = self._parse_algorithm(paths)
 
         return {"Potential": list(potential_paths),
                 "Algorithm": algorithms}
 
-    def parse_specification(self, object_class) -> set:
+    def _get_paths(self, graph: dict, start, path=None) -> list[list]:
+        # full path to current node
+        path = [start] if path is None else path + [start]
+        # adding current node path and it's children (if they exist) to the list of potential paths
+        paths = [path] + [path + [node] for node in graph.get(start, [])]
+        # iterate over children nodes
+        for node in graph.get(start, []):
+            # check if child not is already mentioned in path
+            if node not in path:
+                new_paths = self._get_paths(graph, node, path)
+                # adding paths got from children to potential paths list
+                for new_path in new_paths:
+                    if new_path not in paths:
+                        paths.append(new_path)
+        return paths
+
+    def _parse_specification(self, paths: list[list]) -> [set, dict]:
         """
         returns list of potential paths for provided class according to algorithms specifications
-        :param object_class: object class
         :return: list of unique potential paths
         """
-        def get_paths(graph: dict, start, path=None) -> list[list]:
-            # full path to current node
-            path = [start] if path is None else path + [start]
-            # adding current node path and it's children (if they exist) to the list of potential paths
-            paths = [path] + [path + [node] for node in graph.get(start, [])]
-            # iterate over children nodes
-            for node in graph.get(start, []):
-                # check if child not is already mentioned in path
-                if node not in path:
-                    new_paths = get_paths(graph, node, path)
-                    # adding paths got from children to potential paths list
-                    for new_path in new_paths:
-                        if new_path not in paths:
-                            paths.append(new_path)
-            return paths
-
         potential_paths = set()
-        for algorithm in self.algorithm_list:
-            # getting paths for each algorithm
-            paths = get_paths(algorithm.SPECIFICATION, object_class)
-            # converting them to string representation
-            str_paths = ['/' + '/'.join([elem.__name__ for elem in path]) for path in paths]
-            for path in str_paths:
-                potential_paths.add(path)
+        # converting them to string representation
+        str_paths = ['/' + '/'.join([self._get_name(elem) for elem in path]) for path in paths]
+        for path in str_paths:
+            potential_paths.add(path)
+
         return potential_paths
 
-    def parse_algorithm(self, source_object, algorithm) -> dict[dict[list]]:
+    def _parse_algorithm(self, paths: list[list]) -> dict[dict[list]]:
         """
         returns list of actual paths for provided class according to algorithm's implementation
-        :param source_object: object class
-        :param algorithm: algorithm to check path
         :return: dictionary with occurring paths for this algorithm
         """
-        results = []
-        queue = [[source_object()]]
-        while queue:
-            results.extend(queue)
-            new_queue = []
-            for item in queue:
-                # Creating list of paths occurring for algorithm
-                new_items = ([*item, new_item] for new_item in algorithm(item[-1]))
-                new_queue.extend(new_items)
-            queue = new_queue
 
         result_dict = {}
         # converting list of paths to dictionary
-        for elem in [tuple([self.get_class_name(elem) for elem in result]) for result in results]:
+        for elem in [tuple([self._get_name(elem) for elem in path]) for path in paths]:
             # excluding path consisting of 1 element
             if len(elem) > 1:
                 key = '/' + '/'.join(elem[:-1])
@@ -98,8 +83,8 @@ class Component:
         return result_dict
 
     @staticmethod
-    def get_class_name(obj) -> str:
-        return obj.__class__.__name__
+    def _get_name(obj) -> str:
+        return obj.__name__
 
 
 class Apple:
