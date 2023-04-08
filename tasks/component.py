@@ -24,11 +24,11 @@ class Component:
         """
         Function returns list of potential paths and list of algorithms
         """
-        potential_paths, algorithms = set(), dict()
+        potential_paths = self._parse_specification(object_class)
 
+        algorithms = dict()
         for algorithm in self.algorithm_list:
             paths = self._get_paths(algorithm.SPECIFICATION, object_class)
-            potential_paths.update(self._parse_specification(paths))
             algorithms[self._get_name(algorithm.__class__)] = self._parse_algorithm(paths)
 
         return {"Potential": list(potential_paths),
@@ -50,11 +50,20 @@ class Component:
                         paths.append(new_path)
         return paths
 
-    def _parse_specification(self, paths: list[list]) -> [set, dict]:
+    def _parse_specification(self, object_class) -> [set, dict]:
         """
         returns list of potential paths for provided class according to algorithms specifications
         :return: list of unique potential paths
         """
+        component_specification = dict()
+        # combine specifications of all algorithms to one dictionary
+        for algorithm in self.algorithm_list:
+            for key, value in algorithm.SPECIFICATION.items():
+                component_specification.setdefault(key, []).extend(value)
+
+        # find paths for combined specification
+        paths = self._get_paths(component_specification, object_class)
+
         potential_paths = set()
         # converting them to string representation
         str_paths = ['/' + '/'.join([self._get_name(elem) for elem in path]) for path in paths]
